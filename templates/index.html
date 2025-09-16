@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Price Predictor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            color: #333;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #0056b3;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 700;
+            color: #555;
+        }
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        input[type="number"]:focus,
+        select:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        #predictionResult {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #e9f7ef;
+            border: 1px solid #d4edda;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 700;
+            color: #28a745;
+            display: none; /* Hidden by default */
+        }
+        .error-message {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Predict House Price</h1>
+        <form id="houseForm">
+            <div class="form-group">
+                <label for="bhk">BHK:</label>
+                <input type="number" id="bhk" name="bhk" min="1" required>
+                <div class="error-message" id="bhkError">Please enter a valid number of BHK.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="total_sqft">Total Square Feet:</label>
+                <input type="number" id="total_sqft" name="total_sqft" min="1" required>
+                <div class="error-message" id="sqftError">Please enter a valid total square feet.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="bath">Number of Bathrooms:</label>
+                <input type="number" id="bath" name="bath" min="0" required>
+                <div class="error-message" id="bathError">Please enter a valid number of bathrooms.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="balcony">Number of Balconies:</label>
+                <input type="number" id="balcony" name="balcony" min="0" required>
+                <div class="error-message" id="balconyError">Please enter a valid number of balconies.</div>
+            </div>
+
+            <div class="form-group">
+                <label for="location">Location:</label>
+                <select id="location" name="location" required>
+                    <!-- Options will be loaded dynamically by JavaScript -->
+                    <option value="">Loading locations...</option>
+                </select>
+                <div class="error-message" id="locationError">Please select a location.</div>
+            </div>
+
+            <button type="submit">Predict Price</button>
+        </form>
+        <div id="predictionResult"></div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('houseForm');
+            const predictionResult = document.getElementById('predictionResult');
+            const locationSelect = document.getElementById('location');
+
+            // Function to fetch locations and populate the dropdown
+            async function loadLocations() {
+                try {
+                    const response = await fetch('/get_location_names');
+                    const data = await response.json();
+                    if (data.locations) {
+                        locationSelect.innerHTML = '<option value="">Select a location</option>'; // Clear loading message
+                        data.locations.forEach(location => {
+                            const option = document.createElement('option');
+                            option.value = location;
+                            option.textContent = location;
+                            locationSelect.appendChild(option);
+                        });
+                    } else {
+                        locationSelect.innerHTML = '<option value="">Error loading locations</option>';
+                    }
+                } catch (error) {
+                    console.error('Error loading locations:', error);
+                    locationSelect.innerHTML = '<option value="">Error loading locations</option>';
+                }
+            }
+
+            // Load locations when the page loads
+            loadLocations();
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                // Clear previous error messages and results
+                document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+                predictionResult.style.display = 'none';
+                predictionResult.textContent = '';
+
+                // Get form data
+                const bhk = document.getElementById('bhk').value;
+                const total_sqft = document.getElementById('total_sqft').value;
+                const bath = document.getElementById('bath').value;
+                const balcony = document.getElementById('balcony').value;
+                const location = document.getElementById('location').value;
+
+                let isValid = true;
+
+                // Basic validation
+                if (!bhk || isNaN(bhk) || parseInt(bhk) < 1) {
+                    document.getElementById('bhkError').style.display = 'block';
+                    isValid = false;
+                }
+                if (!total_sqft || isNaN(total_sqft) || parseFloat(total_sqft) < 1) {
+                    document.getElementById('sqftError').style.display = 'block';
+                    isValid = false;
+                }
+                if (!bath || isNaN(bath) || parseInt(bath) < 0) {
+                    document.getElementById('bathError').style.display = 'block';
+                    isValid = false;
+                }
+                if (!balcony || isNaN(balcony) || parseInt(balcony) < 0) {
+                    document.getElementById('balconyError').style.display = 'block';
+                    isValid = false;
+                }
+                if (!location) {
+                    document.getElementById('locationError').style.display = 'block';
+                    isValid = false;
+                }
+
+                if (!isValid) {
+                    return; // Stop if validation fails
+                }
+
+                // Prepare data for API call
+                const formData = {
+                    bhk: parseInt(bhk),
+                    total_sqft: parseFloat(total_sqft),
+                    bath: parseInt(bath),
+                    balcony: parseInt(balcony),
+                    location: location
+                };
+
+                try {
+                    const response = await fetch('/predict_home_price', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(formData)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        predictionResult.textContent = `Predicted Price: ₹${data.predicted_price.toFixed(2)} Lakhs`;
+                        predictionResult.style.backgroundColor = '#e9f7ef';
+                        predictionResult.style.color = '#28a745';
+                    } else {
+                        predictionResult.textContent = `Error: ${data.error || 'Something went wrong.'}`;
+                        predictionResult.style.backgroundColor = '#f8d7da';
+                        predictionResult.style.color = '#dc3545';
+                    }
+                    predictionResult.style.display = 'block';
+
+                } catch (error) {
+                    console.error('Error during prediction:', error);
+                    predictionResult.textContent = 'An error occurred while connecting to the server.';
+                    predictionResult.style.backgroundColor = '#f8d7da';
+                    predictionResult.style.color = '#dc3545';
+                    predictionResult.style.display = 'block';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
