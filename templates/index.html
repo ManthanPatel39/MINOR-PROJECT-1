@@ -228,9 +228,9 @@
                     const data = await response.json();
 
                     if (response.ok) {
-                        predictionResult.textContent = `Predicted Price: ₹${data.predicted_price.toFixed(2)} Lakhs`;
-                        predictionResult.style.backgroundColor = '#e9f7ef';
-                        predictionResult.style.color = '#28a745';
+                         predictionResult.textContent = `Predicted Price: ${data.formatted_price}`;
+                         predictionResult.style.backgroundColor = '#e9f7ef';
+                         predictionResult.style.color = '#28a745';
                     } else {
                         predictionResult.textContent = `Error: ${data.error || 'Something went wrong.'}`;
                         predictionResult.style.backgroundColor = '#f8d7da';
